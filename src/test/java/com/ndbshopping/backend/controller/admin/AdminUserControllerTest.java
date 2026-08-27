@@ -21,8 +21,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,20 +72,10 @@ class AdminUserControllerTest {
         assertFalse(userRepository.existsByTelephone("20000001"));
         assertEquals(1, userRepository.findByRoleOrderByCreatedAtDesc(Role.ADMIN, Pageable.unpaged()).getTotalElements());
 
-        doNothing().when(otpService).sendOtp(anyString(), anyString());
-        doNothing().when(otpService).verifyOrThrow(anyString(), anyString());
-
         mockMvc.perform(post("/api/auth/register-or-login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"nom":"Administrateur","telephone":"37565537","password":"password123"}
-                                """))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/api/auth/verify-otp")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"telephone":"37565537","code":"123456"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isString())
