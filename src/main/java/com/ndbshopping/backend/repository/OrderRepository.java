@@ -1,7 +1,6 @@
 package com.ndbshopping.backend.repository;
 
 import com.ndbshopping.backend.entity.Order;
-import com.ndbshopping.backend.entity.enums.DeliveryCity;
 import com.ndbshopping.backend.entity.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +22,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             """)
     Page<Order> search(
             @Param("statut") OrderStatus statut,
-            @Param("ville") DeliveryCity ville,
+            @Param("ville") String ville,
             Pageable pageable
     );
 }

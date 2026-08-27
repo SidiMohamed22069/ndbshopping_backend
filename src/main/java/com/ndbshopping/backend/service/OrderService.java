@@ -8,7 +8,6 @@ import com.ndbshopping.backend.entity.Order;
 import com.ndbshopping.backend.entity.OrderItem;
 import com.ndbshopping.backend.entity.Product;
 import com.ndbshopping.backend.entity.User;
-import com.ndbshopping.backend.entity.enums.DeliveryCity;
 import com.ndbshopping.backend.entity.enums.NotificationType;
 import com.ndbshopping.backend.entity.enums.OrderStatus;
 import com.ndbshopping.backend.exception.ApiException;
@@ -51,7 +50,7 @@ public class OrderService {
 
         Order order = Order.builder()
                 .user(user)
-                .villeLivraison(request.villeLivraison())
+                .villeLivraison(Order.VILLE_LIVRAISON)
                 .adresseDetails(request.adresseDetails().trim())
                 .statut(OrderStatus.EN_ATTENTE)
                 .total(BigDecimal.ZERO)
@@ -99,7 +98,7 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<OrderResponse> adminSearch(OrderStatus statut, DeliveryCity ville, Pageable pageable) {
+    public PageResponse<OrderResponse> adminSearch(OrderStatus statut, String ville, Pageable pageable) {
         Page<Order> page = orderRepository.search(statut, ville, pageable);
         page.forEach(this::touch);
         return PageResponse.from(page.map(OrderResponse::from));

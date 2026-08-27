@@ -3,7 +3,6 @@ package com.ndbshopping.backend.controller.admin;
 import com.ndbshopping.backend.dto.common.PageResponse;
 import com.ndbshopping.backend.dto.order.OrderResponse;
 import com.ndbshopping.backend.dto.order.UpdateOrderStatusRequest;
-import com.ndbshopping.backend.entity.enums.DeliveryCity;
 import com.ndbshopping.backend.entity.enums.OrderStatus;
 import com.ndbshopping.backend.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +33,7 @@ public class AdminOrderController {
     @Operation(summary = "Liste des commandes, filtrable par statut et ville")
     public PageResponse<OrderResponse> list(
             @RequestParam(required = false) OrderStatus statut,
-            @RequestParam(required = false) DeliveryCity ville,
+            @RequestParam(required = false) String ville,
             @PageableDefault(size = 20) Pageable pageable
     ) {
         return orderService.adminSearch(statut, ville, pageable);

@@ -1,7 +1,6 @@
 package com.ndbshopping.backend.dto.order;
 
 import com.ndbshopping.backend.entity.Order;
-import com.ndbshopping.backend.entity.enums.DeliveryCity;
 import com.ndbshopping.backend.entity.enums.OrderStatus;
 
 import java.math.BigDecimal;
@@ -13,7 +12,7 @@ public record OrderResponse(
         Long userId,
         String clientNom,
         String clientTelephone,
-        DeliveryCity villeLivraison,
+        String villeLivraison,
         String adresseDetails,
         OrderStatus statut,
         BigDecimal total,

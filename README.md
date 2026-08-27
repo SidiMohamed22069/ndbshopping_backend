@@ -1,6 +1,6 @@
 # NDB SHOPPING — Backend (Spring Boot)
 
-API REST de la marketplace **NDB SHOPPING** (Nouadhibou / Zouérat / Nouakchott).
+API REST de la marketplace **NDB SHOPPING** (Nouadhibou).
 
 Stack : Java 21, Spring Boot 3.4, PostgreSQL, Redis, JWT, WebSocket (STOMP), SMS OTP Chinguisoft.
 

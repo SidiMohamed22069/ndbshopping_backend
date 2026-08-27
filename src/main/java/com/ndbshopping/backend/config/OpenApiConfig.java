@@ -18,7 +18,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("NDB SHOPPING API")
                         .version("1.0.0")
-                        .description("API REST de la marketplace NDB SHOPPING (Nouadhibou / Zouérat / Nouakchott).")
+                        .description("API REST de la marketplace NDB SHOPPING (Nouadhibou).")
                         .contact(new Contact().name("NDB SHOPPING")))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new Components().addSecuritySchemes("bearerAuth",

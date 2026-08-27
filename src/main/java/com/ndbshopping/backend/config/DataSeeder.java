@@ -122,7 +122,7 @@ public class DataSeeder implements CommandLineRunner {
 
         publicationRepository.save(Publication.builder()
                 .titre("Bienvenue sur NDB SHOPPING")
-                .contenu("Marketplace pour Nouadhibou, Zouérat et Nouakchott. Commandez en toute simplicité.")
+                .contenu("Marketplace pour Nouadhibou. Commandez en toute simplicité.")
                 .statut(PublicationStatus.PUBLIE)
                 .build());
 

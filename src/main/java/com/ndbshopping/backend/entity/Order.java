@@ -1,6 +1,5 @@
 package com.ndbshopping.backend.entity;
 
-import com.ndbshopping.backend.entity.enums.DeliveryCity;
 import com.ndbshopping.backend.entity.enums.OrderStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -36,6 +35,12 @@ import java.util.List;
 @Builder
 public class Order {
 
+    /**
+     * Unique ville desservie. Les anciennes commandes peuvent encore contenir
+     * les valeurs d'enum historiques NOUADHIBOU / ZOUERAT / NOUAKCHOTT (varchar inchangé).
+     */
+    public static final String VILLE_LIVRAISON = "Nouadhibou";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -44,9 +49,9 @@ public class Order {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "ville_livraison", nullable = false, length = 30)
-    private DeliveryCity villeLivraison;
+    @Builder.Default
+    private String villeLivraison = VILLE_LIVRAISON;
 
     @Column(name = "adresse_details", nullable = false, columnDefinition = "TEXT")
     private String adresseDetails;
@@ -70,6 +75,9 @@ public class Order {
     void onCreate() {
         if (createdAt == null) {
             createdAt = Instant.now();
+        }
+        if (villeLivraison == null || villeLivraison.isBlank()) {
+            villeLivraison = VILLE_LIVRAISON;
         }
     }
 }
