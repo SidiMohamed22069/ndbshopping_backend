@@ -20,11 +20,14 @@ import com.ndbshopping.backend.repository.CategoryAttributeDefinitionRepository;
 import com.ndbshopping.backend.repository.OrderItemRepository;
 import com.ndbshopping.backend.repository.ProductImageRepository;
 import com.ndbshopping.backend.repository.ProductRepository;
+import com.ndbshopping.backend.repository.ProductSpecifications;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -97,8 +100,18 @@ public class ProductService {
             String q,
             Pageable pageable
     ) {
-        String query = (q == null || q.isBlank()) ? "" : q.trim();
-        Page<Product> page = productRepository.search(statut, categoryId, minPrix, maxPrix, query, pageable);
+        String query = (q == null || q.isBlank()) ? null : q.trim();
+        Pageable sorted = pageable.getSort().isSorted()
+                ? pageable
+                : PageRequest.of(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                );
+        Page<Product> page = productRepository.findAll(
+                ProductSpecifications.matching(statut, categoryId, minPrix, maxPrix, query),
+                sorted
+        );
         page.forEach(this::touchAssociations);
         return PageResponse.from(page.map(ProductResponse::from));
     }
