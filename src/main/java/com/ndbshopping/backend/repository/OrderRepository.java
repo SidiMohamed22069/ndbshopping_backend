@@ -13,6 +13,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+    boolean existsByUserId(Long userId);
+
     @Query("""
             SELECT o FROM Order o
             WHERE (:statut IS NULL OR o.statut = :statut)

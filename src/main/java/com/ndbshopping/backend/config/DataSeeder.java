@@ -61,17 +61,21 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedAdmin() {
-        if (userRepository.existsByTelephone("20000001")) {
+        if (userRepository.existsByTelephone("37565537")) {
+            return;
+        }
+        // Bases déjà déployées : ne pas créer un second admin si l'ancien seed (20000001) ou un ADMIN existe.
+        if (userRepository.existsByTelephone("20000001") || userRepository.existsByRole(Role.ADMIN)) {
             return;
         }
         userRepository.save(User.builder()
                 .nom("Administrateur")
-                .telephone("20000001")
-                .passwordHash(passwordEncoder.encode("admin123"))
+                .telephone("37565537")
+                .passwordHash(passwordEncoder.encode("password123"))
                 .telephoneVerifie(true)
                 .role(Role.ADMIN)
                 .build());
-        log.info("Compte admin de démo créé (téléphone 20000001)");
+        log.info("Compte admin de démo créé (téléphone 37565537)");
     }
 
     private void seedCatalog() {

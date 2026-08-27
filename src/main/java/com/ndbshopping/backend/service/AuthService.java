@@ -47,6 +47,8 @@ public class AuthService {
             userRepository.save(user);
         } else if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw ApiException.unauthorized("Mot de passe incorrect");
+        } else if (!user.isActif()) {
+            throw ApiException.forbidden("Compte désactivé");
         }
 
         otpService.sendOtp(request.telephone(), request.langOrDefault());

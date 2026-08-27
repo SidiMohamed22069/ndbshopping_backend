@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
@@ -48,6 +49,11 @@ public class User {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private Role role = Role.CLIENT;
+
+    @Column(nullable = false)
+    @ColumnDefault("true")
+    @Builder.Default
+    private boolean actif = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
