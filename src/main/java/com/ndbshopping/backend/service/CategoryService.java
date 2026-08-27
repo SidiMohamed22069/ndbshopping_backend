@@ -12,6 +12,7 @@ import com.ndbshopping.backend.repository.CategoryRepository;
 import com.ndbshopping.backend.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Comparator;
 import java.util.List;
@@ -24,15 +25,18 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final CategoryAttributeDefinitionRepository attributeRepository;
     private final ProductRepository productRepository;
+    private final FileStorageService fileStorageService;
 
     public CategoryService(
             CategoryRepository categoryRepository,
             CategoryAttributeDefinitionRepository attributeRepository,
-            ProductRepository productRepository
+            ProductRepository productRepository,
+            FileStorageService fileStorageService
     ) {
         this.categoryRepository = categoryRepository;
         this.attributeRepository = attributeRepository;
         this.productRepository = productRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +81,9 @@ public class CategoryService {
         category.setNom(request.nom().trim());
         category.setType(request.type());
         category.setParent(resolveParent(request.parentId()));
-        category.setImageUrl(request.imageUrl());
+        if (request.imageUrl() != null) {
+            category.setImageUrl(request.imageUrl());
+        }
         return CategoryResponse.leaf(category);
     }
 
@@ -90,7 +96,18 @@ public class CategoryService {
         if (productRepository.existsByCategoryId(id)) {
             throw ApiException.conflict("Impossible de supprimer une catégorie qui contient des produits");
         }
+        fileStorageService.deleteStoredImage(category.getImageUrl());
         categoryRepository.delete(category);
+    }
+
+    @Transactional
+    public CategoryResponse uploadImage(Long id, MultipartFile file) {
+        Category category = get(id);
+        String previous = category.getImageUrl();
+        String stored = fileStorageService.storeCategoryImage(id, file);
+        fileStorageService.deleteStoredImage(previous);
+        category.setImageUrl(stored);
+        return CategoryResponse.leaf(category);
     }
 
     @Transactional(readOnly = true)

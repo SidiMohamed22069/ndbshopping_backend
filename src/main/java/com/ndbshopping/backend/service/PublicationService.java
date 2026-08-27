@@ -12,16 +12,23 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class PublicationService {
 
     private final PublicationRepository publicationRepository;
     private final ProductService productService;
+    private final FileStorageService fileStorageService;
 
-    public PublicationService(PublicationRepository publicationRepository, ProductService productService) {
+    public PublicationService(
+            PublicationRepository publicationRepository,
+            ProductService productService,
+            FileStorageService fileStorageService
+    ) {
         this.publicationRepository = publicationRepository;
         this.productService = productService;
+        this.fileStorageService = fileStorageService;
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +61,9 @@ public class PublicationService {
         Publication publication = get(id);
         publication.setTitre(request.titre().trim());
         publication.setContenu(request.contenu());
-        publication.setImageUrl(request.imageUrl());
+        if (request.imageUrl() != null) {
+            publication.setImageUrl(request.imageUrl());
+        }
         publication.setProduitLie(resolveProduct(request.produitLieId()));
         if (request.statut() != null) {
             publication.setStatut(request.statut());
@@ -64,7 +73,19 @@ public class PublicationService {
 
     @Transactional
     public void delete(Long id) {
-        publicationRepository.delete(get(id));
+        Publication publication = get(id);
+        fileStorageService.deleteStoredImage(publication.getImageUrl());
+        publicationRepository.delete(publication);
+    }
+
+    @Transactional
+    public PublicationResponse uploadImage(Long id, MultipartFile file) {
+        Publication publication = get(id);
+        String previous = publication.getImageUrl();
+        String stored = fileStorageService.storePublicationImage(id, file);
+        fileStorageService.deleteStoredImage(previous);
+        publication.setImageUrl(stored);
+        return PublicationResponse.from(publication);
     }
 
     private Publication get(Long id) {

@@ -2,6 +2,7 @@ package com.ndbshopping.backend.dto.category;
 
 import com.ndbshopping.backend.entity.Category;
 import com.ndbshopping.backend.entity.enums.CategoryType;
+import com.ndbshopping.backend.service.FileStorageService;
 
 import java.util.List;
 
@@ -19,7 +20,7 @@ public record CategoryResponse(
                 category.getNom(),
                 category.getType(),
                 category.getParent() == null ? null : category.getParent().getId(),
-                category.getImageUrl(),
+                FileStorageService.toPublicUrl(category.getImageUrl()),
                 children
         );
     }

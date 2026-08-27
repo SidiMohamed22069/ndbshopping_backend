@@ -2,6 +2,7 @@ package com.ndbshopping.backend.dto.publication;
 
 import com.ndbshopping.backend.entity.Publication;
 import com.ndbshopping.backend.entity.enums.PublicationStatus;
+import com.ndbshopping.backend.service.FileStorageService;
 
 import java.time.Instant;
 
@@ -19,7 +20,7 @@ public record PublicationResponse(
                 publication.getId(),
                 publication.getTitre(),
                 publication.getContenu(),
-                publication.getImageUrl(),
+                FileStorageService.toPublicUrl(publication.getImageUrl()),
                 publication.getProduitLie() == null ? null : publication.getProduitLie().getId(),
                 publication.getDatePublication(),
                 publication.getStatut()
