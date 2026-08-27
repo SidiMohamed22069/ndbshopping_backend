@@ -15,11 +15,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("""
             SELECT p FROM Product p
             WHERE (:status IS NULL OR p.statut = :status)
-              AND (:categoryId IS NULL OR p.category.id = :categoryId)
-              AND (:minPrix IS NULL OR p.prix >= :minPrix)
-              AND (:maxPrix IS NULL OR p.prix <= :maxPrix)
-              AND (:q IS NULL OR LOWER(p.nom) LIKE LOWER(CONCAT('%', :q, '%'))
-                   OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :q, '%')))
+              AND (CAST(:categoryId AS long) IS NULL OR p.category.id = CAST(:categoryId AS long))
+              AND (CAST(:minPrix AS big_decimal) IS NULL OR p.prix >= CAST(:minPrix AS big_decimal))
+              AND (CAST(:maxPrix AS big_decimal) IS NULL OR p.prix <= CAST(:maxPrix AS big_decimal))
+              AND (
+                    CAST(:q AS string) IS NULL
+                    OR CAST(:q AS string) = ''
+                    OR LOWER(p.nom) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                    OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+                  )
             ORDER BY p.createdAt DESC
             """)
     Page<Product> search(

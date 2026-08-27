@@ -97,7 +97,7 @@ public class ProductService {
             String q,
             Pageable pageable
     ) {
-        String query = (q == null || q.isBlank()) ? null : q.trim();
+        String query = (q == null || q.isBlank()) ? "" : q.trim();
         Page<Product> page = productRepository.search(statut, categoryId, minPrix, maxPrix, query, pageable);
         page.forEach(this::touchAssociations);
         return PageResponse.from(page.map(ProductResponse::from));
