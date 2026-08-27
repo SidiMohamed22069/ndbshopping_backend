@@ -13,7 +13,8 @@ public record PublicationResponse(
         String imageUrl,
         Long produitLieId,
         Instant datePublication,
-        PublicationStatus statut
+        PublicationStatus statut,
+        boolean misEnAvant
 ) {
     public static PublicationResponse from(Publication publication) {
         return new PublicationResponse(
@@ -23,7 +24,8 @@ public record PublicationResponse(
                 FileStorageService.toPublicUrl(publication.getImageUrl()),
                 publication.getProduitLie() == null ? null : publication.getProduitLie().getId(),
                 publication.getDatePublication(),
-                publication.getStatut()
+                publication.getStatut(),
+                publication.isMisEnAvant()
         );
     }
 }

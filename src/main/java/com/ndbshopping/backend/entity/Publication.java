@@ -18,6 +18,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.Instant;
 
@@ -54,6 +55,11 @@ public class Publication {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private PublicationStatus statut = PublicationStatus.BROUILLON;
+
+    @Column(name = "mis_en_avant", nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    private boolean misEnAvant = false;
 
     @PrePersist
     void onCreate() {

@@ -8,6 +8,7 @@ public record PublicationRequest(
         @NotBlank String contenu,
         String imageUrl,
         Long produitLieId,
-        PublicationStatus statut
+        PublicationStatus statut,
+        Boolean misEnAvant
 ) {
 }

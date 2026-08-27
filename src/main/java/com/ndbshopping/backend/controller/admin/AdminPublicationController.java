@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,6 +48,11 @@ public class AdminPublicationController {
 
     @PutMapping("/{id}")
     public PublicationResponse update(@PathVariable Long id, @Valid @RequestBody PublicationRequest request) {
+        return publicationService.update(id, request);
+    }
+
+    @PatchMapping("/{id}")
+    public PublicationResponse patch(@PathVariable Long id, @Valid @RequestBody PublicationRequest request) {
         return publicationService.update(id, request);
     }
 

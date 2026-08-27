@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @Service
 public class PublicationService {
 
@@ -39,6 +41,15 @@ public class PublicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<PublicationResponse> listMisesEnAvant() {
+        return publicationRepository
+                .findTop8ByMisEnAvantTrueAndStatutOrderByDatePublicationDesc(PublicationStatus.PUBLIE)
+                .stream()
+                .map(PublicationResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<PublicationResponse> listAdmin(Pageable pageable) {
         Page<Publication> page = publicationRepository.findAllByOrderByDatePublicationDesc(pageable);
         return PageResponse.from(page.map(PublicationResponse::from));
@@ -52,6 +63,7 @@ public class PublicationService {
                 .imageUrl(request.imageUrl())
                 .produitLie(resolveProduct(request.produitLieId()))
                 .statut(request.statut() == null ? PublicationStatus.BROUILLON : request.statut())
+                .misEnAvant(Boolean.TRUE.equals(request.misEnAvant()))
                 .build();
         return PublicationResponse.from(publicationRepository.save(publication));
     }
@@ -67,6 +79,9 @@ public class PublicationService {
         publication.setProduitLie(resolveProduct(request.produitLieId()));
         if (request.statut() != null) {
             publication.setStatut(request.statut());
+        }
+        if (request.misEnAvant() != null) {
+            publication.setMisEnAvant(request.misEnAvant());
         }
         return PublicationResponse.from(publication);
     }

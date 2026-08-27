@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/publications")
 @Tag(name = "Publications (public)")
@@ -26,5 +28,11 @@ public class PublicationController {
     @Operation(summary = "Publications publiées")
     public PageResponse<PublicationResponse> list(@PageableDefault(size = 20) Pageable pageable) {
         return publicationService.listPublic(pageable);
+    }
+
+    @GetMapping("/mises-en-avant")
+    @Operation(summary = "Publications mises en avant (bandeau / carrousel, max 8)")
+    public List<PublicationResponse> misesEnAvant() {
+        return publicationService.listMisesEnAvant();
     }
 }
