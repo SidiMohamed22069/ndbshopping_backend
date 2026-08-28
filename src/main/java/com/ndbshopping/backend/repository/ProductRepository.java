@@ -10,5 +10,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     boolean existsByCategoryId(Long categoryId);
 
+    boolean existsByNomIgnoreCase(String nom);
+
     Page<Product> findBySoumisPar_Id(Long userId, Pageable pageable);
 }

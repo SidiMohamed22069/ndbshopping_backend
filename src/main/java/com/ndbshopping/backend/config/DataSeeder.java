@@ -58,6 +58,7 @@ public class DataSeeder implements CommandLineRunner {
         if (categoryRepository.count() == 0) {
             seedCatalog();
         }
+        seedDemoProducts();
     }
 
     private void seedAdmin() {
@@ -127,5 +128,62 @@ public class DataSeeder implements CommandLineRunner {
                 .build());
 
         log.info("Catégories et données de démo créées (Vêtements, Hôtels, Voitures)");
+    }
+
+    /**
+     * Produits de vitrine : indépendant de l'admin et des catégories déjà présentes.
+     * Idempotent produit par produit (existence par nom), pour un environnement déjà déployé.
+     */
+    private void seedDemoProducts() {
+        seedProduct("Vêtements", "Boubou traditionnel homme",
+                "Boubou ample en tissu de qualité, porté pour les fêtes et cérémonies à Nouadhibou.",
+                "8500.00", 15);
+        seedProduct("Vêtements", "Chemise homme manches longues",
+                "Chemise légère à manches longues, adaptée au climat côtier de Nouadhibou.",
+                "3200.00", 25);
+        seedProduct("Vêtements", "Robe été femme",
+                "Robe fluide pour l'été, confortable en ville comme au bord de mer.",
+                "4500.00", 20);
+
+        seedProduct("Hôtels", "Hôtel El Medina",
+                "Hôtel au centre de Nouadhibou, chambres climatisées proches des commerces et du port.",
+                "15000.00", 5);
+        seedProduct("Hôtels", "Hôtel Nouadhibou Palace",
+                "Établissement confortable à Nouadhibou, idéal pour un séjour d'affaires ou en famille.",
+                "12000.00", 8);
+        seedProduct("Hôtels", "Auberge du Port",
+                "Auberge simple près du port de Nouadhibou, pratique pour les transitaires et les pêcheurs.",
+                "6000.00", 10);
+
+        seedProduct("Voitures", "Toyota Hilux 2020",
+                "Pick-up Toyota Hilux 2020, robuste pour les pistes et le transport à Nouadhibou.",
+                "4500000.00", 1);
+        seedProduct("Voitures", "Peugeot 206 occasion",
+                "Peugeot 206 d'occasion, citadine économique pour les déplacements en ville.",
+                "1200000.00", 1);
+        seedProduct("Voitures", "Renault Duster 2019",
+                "Renault Duster 2019, SUV polyvalent pour la ville et les routes de la région.",
+                "3200000.00", 1);
+    }
+
+    private void seedProduct(String categoryNom, String nom, String description, String prix, int stock) {
+        if (productRepository.existsByNomIgnoreCase(nom)) {
+            return;
+        }
+        Category category = categoryRepository.findFirstByNomIgnoreCase(categoryNom).orElse(null);
+        if (category == null) {
+            log.warn("Catégorie '{}' introuvable, produit '{}' non créé", categoryNom, nom);
+            return;
+        }
+        productRepository.save(Product.builder()
+                .nom(nom)
+                .description(description)
+                .prix(new BigDecimal(prix))
+                .stock(stock)
+                .category(category)
+                .sourceOrigine(ProductSource.MANUEL)
+                .statut(ProductStatus.PUBLIE)
+                .build());
+        log.info("Produit de démo créé : {} ({})", nom, categoryNom);
     }
 }
