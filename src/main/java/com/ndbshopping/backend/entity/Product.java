@@ -22,6 +22,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -69,6 +71,16 @@ public class Product {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private ProductStatus statut = ProductStatus.BROUILLON;
+
+    /** Renseigné uniquement si le produit a été soumis via le formulaire public (null pour une création admin). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "soumis_par_user_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    private User soumisPar;
+
+    /** Motif renseigné uniquement lors d'un rejet admin. */
+    @Column(name = "raison_rejet", columnDefinition = "TEXT")
+    private String raisonRejet;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

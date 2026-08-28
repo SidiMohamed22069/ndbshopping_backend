@@ -2,5 +2,7 @@ package com.ndbshopping.backend.entity.enums;
 
 public enum ProductStatus {
     BROUILLON,
-    PUBLIE
+    EN_ATTENTE,
+    PUBLIE,
+    REJETE
 }

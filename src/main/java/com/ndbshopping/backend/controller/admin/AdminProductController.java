@@ -6,6 +6,7 @@ import com.ndbshopping.backend.dto.product.ImportUrlRequest;
 import com.ndbshopping.backend.dto.product.ProductImageResponse;
 import com.ndbshopping.backend.dto.product.ProductRequest;
 import com.ndbshopping.backend.dto.product.ProductResponse;
+import com.ndbshopping.backend.dto.product.RejectProductRequest;
 import com.ndbshopping.backend.entity.enums.ProductStatus;
 import com.ndbshopping.backend.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -73,6 +75,18 @@ public class AdminProductController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         productService.delete(id);
+    }
+
+    @PatchMapping("/{id}/valider")
+    @Operation(summary = "Valide un produit soumis (EN_ATTENTE → PUBLIE)")
+    public ProductResponse validate(@PathVariable Long id) {
+        return productService.validate(id);
+    }
+
+    @PatchMapping("/{id}/rejeter")
+    @Operation(summary = "Rejette un produit soumis (EN_ATTENTE → REJETE)")
+    public ProductResponse reject(@PathVariable Long id, @Valid @RequestBody RejectProductRequest request) {
+        return productService.reject(id, request.raison());
     }
 
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

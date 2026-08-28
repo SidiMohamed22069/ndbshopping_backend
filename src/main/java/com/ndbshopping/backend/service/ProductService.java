@@ -12,8 +12,11 @@ import com.ndbshopping.backend.entity.CategoryAttributeDefinition;
 import com.ndbshopping.backend.entity.Product;
 import com.ndbshopping.backend.entity.ProductAttributeValue;
 import com.ndbshopping.backend.entity.ProductImage;
+import com.ndbshopping.backend.entity.User;
+import com.ndbshopping.backend.entity.enums.NotificationType;
 import com.ndbshopping.backend.entity.enums.ProductSource;
 import com.ndbshopping.backend.entity.enums.ProductStatus;
+import com.ndbshopping.backend.entity.enums.Role;
 import com.ndbshopping.backend.exception.ApiException;
 import com.ndbshopping.backend.repository.CartItemRepository;
 import com.ndbshopping.backend.repository.CategoryAttributeDefinitionRepository;
@@ -50,6 +53,7 @@ public class ProductService {
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     public ProductService(
             ProductRepository productRepository,
@@ -58,7 +62,8 @@ public class ProductService {
             ProductImageRepository productImageRepository,
             OrderItemRepository orderItemRepository,
             CartItemRepository cartItemRepository,
-            FileStorageService fileStorageService
+            FileStorageService fileStorageService,
+            NotificationService notificationService
     ) {
         this.productRepository = productRepository;
         this.categoryService = categoryService;
@@ -67,6 +72,7 @@ public class ProductService {
         this.orderItemRepository = orderItemRepository;
         this.cartItemRepository = cartItemRepository;
         this.fileStorageService = fileStorageService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -153,6 +159,69 @@ public class ProductService {
     }
 
     @Transactional
+    public ProductResponse submit(User user, ProductRequest request) {
+        Category category = categoryService.get(request.categoryId());
+        Product product = Product.builder()
+                .nom(request.nom().trim())
+                .description(request.description())
+                .prix(request.prix())
+                .stock(request.stock())
+                .category(category)
+                .sourceOrigine(request.sourceOrigine() == null ? ProductSource.MANUEL : request.sourceOrigine())
+                .sourceUrl(request.sourceUrl())
+                .statut(ProductStatus.EN_ATTENTE)
+                .soumisPar(user)
+                .build();
+        applyAttributes(product, category.getId(), request.attributs());
+        Product saved = productRepository.save(product);
+        notificationService.createAndPush(
+                NotificationType.PRODUIT_A_VALIDER,
+                "Produit à valider : " + saved.getNom() + " — " + user.getNom(),
+                "/products/" + saved.getId()
+        );
+        touchAssociations(saved);
+        return ProductResponse.from(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ProductResponse> listMine(User user, Pageable pageable) {
+        Pageable sorted = pageable.getSort().isSorted()
+                ? pageable
+                : PageRequest.of(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                );
+        Page<Product> page = productRepository.findBySoumisPar_Id(user.getId(), sorted);
+        page.forEach(this::touchAssociations);
+        return PageResponse.from(page.map(ProductResponse::from));
+    }
+
+    @Transactional
+    public ProductResponse validate(Long id) {
+        Product product = get(id);
+        if (product.getStatut() != ProductStatus.EN_ATTENTE) {
+            throw ApiException.badRequest("Le produit n'est pas en attente de validation");
+        }
+        product.setStatut(ProductStatus.PUBLIE);
+        product.setRaisonRejet(null);
+        touchAssociations(product);
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse reject(Long id, String raison) {
+        Product product = get(id);
+        if (product.getStatut() != ProductStatus.EN_ATTENTE) {
+            throw ApiException.badRequest("Le produit n'est pas en attente de validation");
+        }
+        product.setStatut(ProductStatus.REJETE);
+        product.setRaisonRejet(raison.trim());
+        touchAssociations(product);
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
         Product product = get(id);
         Category category = categoryService.get(request.categoryId());
@@ -187,8 +256,25 @@ public class ProductService {
 
     @Transactional
     public ProductImageResponse addImage(Long productId, MultipartFile file) {
+        return storeImage(get(productId), file);
+    }
+
+    @Transactional
+    public ProductImageResponse addImage(Long productId, MultipartFile file, User user) {
         Product product = get(productId);
-        String relativePath = fileStorageService.storeProductImage(productId, file);
+        if (user.getRole() != Role.ADMIN) {
+            if (product.getSoumisPar() == null || !product.getSoumisPar().getId().equals(user.getId())) {
+                throw ApiException.forbidden("Vous ne pouvez ajouter une image qu'à vos propres produits");
+            }
+            if (product.getStatut() != ProductStatus.EN_ATTENTE) {
+                throw ApiException.forbidden("Impossible d'ajouter une image après validation ou rejet");
+            }
+        }
+        return storeImage(product, file);
+    }
+
+    private ProductImageResponse storeImage(Product product, MultipartFile file) {
+        String relativePath = fileStorageService.storeProductImage(product.getId(), file);
         ProductImage image = productImageRepository.save(ProductImage.builder()
                 .product(product)
                 .relativePath(relativePath)
@@ -302,6 +388,9 @@ public class ProductService {
         product.getCategory().getNom();
         product.getImages().size();
         product.getAttributes().forEach(a -> a.getAttributeDefinition().getNomAttribut());
+        if (product.getSoumisPar() != null) {
+            product.getSoumisPar().getId();
+        }
     }
 
     static ProductSource detectSource(String url) {
