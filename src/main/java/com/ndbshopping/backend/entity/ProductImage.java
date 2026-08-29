@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "product_images")
@@ -35,4 +36,10 @@ public class ProductImage {
     /** Chemin relatif sous le dossier d'upload, ex: products/12/uuid.jpg */
     @Column(name = "relative_path", nullable = false)
     private String relativePath;
+
+    /** Position dans la galerie (0 = image principale / vignette). */
+    @Column(name = "ordre", nullable = false)
+    @ColumnDefault("0")
+    @Builder.Default
+    private int ordre = 0;
 }

@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -66,9 +67,16 @@ public class ProductController {
 
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Upload d'une image : propriétaire tant que EN_ATTENTE, ou admin")
+    @Operation(summary = "Ajoute une image à la galerie (max 6). Propriétaire tant que EN_ATTENTE, ou admin")
     public ProductImageResponse uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         return productService.addImage(id, file, currentUserService.requireUser());
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Supprime une image de la galerie. Mêmes droits que l'upload")
+    public void deleteImage(@PathVariable Long id, @PathVariable Long imageId) {
+        productService.deleteImage(id, imageId, currentUserService.requireUser());
     }
 
     @PatchMapping("/{id}/vendu")

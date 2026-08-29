@@ -8,6 +8,7 @@ import com.ndbshopping.backend.entity.enums.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 
 public record ProductResponse(
@@ -31,7 +32,8 @@ public record ProductResponse(
     public static ProductResponse from(Product product) {
         List<ProductImageResponse> images = product.getImages() == null ? List.of()
                 : product.getImages().stream()
-                .map(img -> new ProductImageResponse(img.getId(), toMediaUrl(img)))
+                .sorted(Comparator.comparingInt(ProductImage::getOrdre).thenComparing(ProductImage::getId))
+                .map(img -> new ProductImageResponse(img.getId(), toMediaUrl(img), img.getOrdre()))
                 .toList();
         List<ProductAttributeResponse> attributs = product.getAttributes() == null ? List.of()
                 : product.getAttributes().stream()

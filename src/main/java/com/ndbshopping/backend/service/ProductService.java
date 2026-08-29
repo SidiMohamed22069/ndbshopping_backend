@@ -46,6 +46,8 @@ import java.util.Locale;
 @Service
 public class ProductService {
 
+    public static final int MAX_IMAGES_PAR_PRODUIT = 6;
+
     private final ProductRepository productRepository;
     private final CategoryService categoryService;
     private final CategoryAttributeDefinitionRepository attributeDefinitionRepository;
@@ -309,33 +311,61 @@ public class ProductService {
     @Transactional
     public ProductImageResponse addImage(Long productId, MultipartFile file, User user) {
         Product product = get(productId);
-        if (user.getRole() != Role.ADMIN) {
-            if (product.getSoumisPar() == null || !product.getSoumisPar().getId().equals(user.getId())) {
-                throw ApiException.forbidden("Vous ne pouvez ajouter une image qu'à vos propres produits");
-            }
-            if (product.getStatut() != ProductStatus.EN_ATTENTE) {
-                throw ApiException.forbidden("Impossible d'ajouter une image après validation ou rejet");
-            }
-        }
+        assertCanEditImages(user, product);
         return storeImage(product, file);
     }
 
     private ProductImageResponse storeImage(Product product, MultipartFile file) {
+        if (product.getImages().size() >= MAX_IMAGES_PAR_PRODUIT) {
+            throw ApiException.conflict(
+                    "Limite de 6 images atteinte. Supprimez-en une pour en ajouter une autre.");
+        }
+        int nextOrdre = product.getImages().stream()
+                .mapToInt(ProductImage::getOrdre)
+                .max()
+                .orElse(-1) + 1;
         String relativePath = fileStorageService.storeProductImage(product.getId(), file);
         ProductImage image = productImageRepository.save(ProductImage.builder()
                 .product(product)
                 .relativePath(relativePath)
+                .ordre(nextOrdre)
                 .build());
         product.getImages().add(image);
-        return new ProductImageResponse(image.getId(), "/media/" + relativePath);
+        return new ProductImageResponse(image.getId(), "/media/" + relativePath, image.getOrdre());
     }
 
     @Transactional
     public void deleteImage(Long productId, Long imageId) {
-        ProductImage image = productImageRepository.findByIdAndProductId(imageId, productId)
+        removeImage(get(productId), imageId);
+    }
+
+    @Transactional
+    public void deleteImage(Long productId, Long imageId, User user) {
+        Product product = get(productId);
+        assertCanEditImages(user, product);
+        removeImage(product, imageId);
+    }
+
+    private void removeImage(Product product, Long imageId) {
+        ProductImage image = product.getImages().stream()
+                .filter(img -> img.getId().equals(imageId))
+                .findFirst()
                 .orElseThrow(() -> ApiException.notFound("Image introuvable"));
         fileStorageService.deleteIfExists(image.getRelativePath());
+        product.getImages().remove(image);
         productImageRepository.delete(image);
+    }
+
+    private void assertCanEditImages(User user, Product product) {
+        if (user.getRole() == Role.ADMIN) {
+            return;
+        }
+        if (product.getSoumisPar() == null || !product.getSoumisPar().getId().equals(user.getId())) {
+            throw ApiException.forbidden("Vous ne pouvez modifier les images que de vos propres produits");
+        }
+        if (product.getStatut() != ProductStatus.EN_ATTENTE) {
+            throw ApiException.forbidden("Impossible de modifier les images après validation ou rejet");
+        }
     }
 
     /**
