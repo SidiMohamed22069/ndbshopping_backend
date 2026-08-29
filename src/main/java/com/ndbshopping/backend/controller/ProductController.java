@@ -14,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -70,9 +71,27 @@ public class ProductController {
         return productService.addImage(id, file, currentUserService.requireUser());
     }
 
+    @PatchMapping("/{id}/vendu")
+    @Operation(summary = "Marque l'annonce comme vendue (PUBLIE → VENDU)")
+    public ProductResponse markSold(@PathVariable Long id) {
+        return productService.markSold(id, currentUserService.requireUser());
+    }
+
+    @PatchMapping("/{id}/archiver")
+    @Operation(summary = "Archive l'annonce (PUBLIE → ARCHIVE uniquement, pas depuis VENDU)")
+    public ProductResponse archive(@PathVariable Long id) {
+        return productService.archive(id, currentUserService.requireUser());
+    }
+
+    @PatchMapping("/{id}/reactiver")
+    @Operation(summary = "Réactive une annonce vendue ou archivée (→ PUBLIE)")
+    public ProductResponse reactivate(@PathVariable Long id) {
+        return productService.reactivate(id, currentUserService.requireUser());
+    }
+
     @GetMapping("/{id}")
-    @Operation(summary = "Détail d'un produit publié")
+    @Operation(summary = "Détail d'un produit publié (404 si non public, sauf propriétaire/admin)")
     public ProductResponse get(@PathVariable Long id) {
-        return productService.getPublic(id);
+        return productService.getVisible(id, currentUserService.findUser().orElse(null));
     }
 }

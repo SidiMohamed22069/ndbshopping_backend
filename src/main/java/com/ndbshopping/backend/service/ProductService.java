@@ -124,8 +124,13 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponse getPublic(Long id) {
+        return getVisible(id, null);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse getVisible(Long id, User viewer) {
         Product product = get(id);
-        if (product.getStatut() != ProductStatus.PUBLIE) {
+        if (product.getStatut() != ProductStatus.PUBLIE && !canManageListing(viewer, product)) {
             throw ApiException.notFound("Produit introuvable");
         }
         touchAssociations(product);
@@ -217,6 +222,48 @@ public class ProductService {
         }
         product.setStatut(ProductStatus.REJETE);
         product.setRaisonRejet(raison.trim());
+        touchAssociations(product);
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse markSold(Long id, User user) {
+        Product product = get(id);
+        assertCanManageListing(user, product);
+        if (product.getStatut() != ProductStatus.PUBLIE) {
+            throw ApiException.badRequest(
+                    "Le produit doit d'abord être validé et publié avant d'être marqué comme vendu");
+        }
+        product.setStatut(ProductStatus.VENDU);
+        touchAssociations(product);
+        return ProductResponse.from(product);
+    }
+
+    /**
+     * Archive uniquement depuis PUBLIE. Un produit VENDU reste VENDU (historique de vente),
+     * il n'est pas basculé en ARCHIVE.
+     */
+    @Transactional
+    public ProductResponse archive(Long id, User user) {
+        Product product = get(id);
+        assertCanManageListing(user, product);
+        if (product.getStatut() != ProductStatus.PUBLIE) {
+            throw ApiException.badRequest(
+                    "Le produit doit d'abord être validé et publié avant d'être archivé");
+        }
+        product.setStatut(ProductStatus.ARCHIVE);
+        touchAssociations(product);
+        return ProductResponse.from(product);
+    }
+
+    @Transactional
+    public ProductResponse reactivate(Long id, User user) {
+        Product product = get(id);
+        assertCanManageListing(user, product);
+        if (product.getStatut() != ProductStatus.VENDU && product.getStatut() != ProductStatus.ARCHIVE) {
+            throw ApiException.badRequest("Seule une annonce vendue ou archivée peut être réactivée");
+        }
+        product.setStatut(ProductStatus.PUBLIE);
         touchAssociations(product);
         return ProductResponse.from(product);
     }
@@ -364,6 +411,22 @@ public class ProductService {
     public Product get(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Produit introuvable"));
+    }
+
+    private void assertCanManageListing(User user, Product product) {
+        if (!canManageListing(user, product)) {
+            throw ApiException.forbidden("Vous ne pouvez modifier que vos propres annonces");
+        }
+    }
+
+    private static boolean canManageListing(User user, Product product) {
+        if (user == null) {
+            return false;
+        }
+        if (user.getRole() == Role.ADMIN) {
+            return true;
+        }
+        return product.getSoumisPar() != null && product.getSoumisPar().getId().equals(user.getId());
     }
 
     private void applyAttributes(Product product, Long categoryId, List<ProductAttributeInput> attributs) {

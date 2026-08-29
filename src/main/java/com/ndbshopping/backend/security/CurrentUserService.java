@@ -8,6 +8,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class CurrentUserService {
 
@@ -18,11 +20,14 @@ public class CurrentUserService {
     }
 
     public User requireUser() {
+        return findUser().orElseThrow(() -> ApiException.unauthorized("Authentification requise"));
+    }
+
+    public Optional<User> findUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails details)) {
-            throw ApiException.unauthorized("Authentification requise");
+            return Optional.empty();
         }
-        return userRepository.findByTelephone(details.getUsername())
-                .orElseThrow(() -> ApiException.unauthorized("Utilisateur introuvable"));
+        return userRepository.findByTelephone(details.getUsername());
     }
 }

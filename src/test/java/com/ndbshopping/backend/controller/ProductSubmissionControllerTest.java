@@ -269,6 +269,122 @@ class ProductSubmissionControllerTest {
     }
 
     @Test
+    void ownerCanMarkOwnPublishedProductAsSold() throws Exception {
+        Long id = publishAs(client, PRODUCT_NOM);
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", id)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("VENDU"));
+    }
+
+    @Test
+    void ownerCannotMarkAnotherUsersProductAsSold() throws Exception {
+        Long id = publishAs(otherClient, "Produit autre user");
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", id)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCanMarkAnyProductSoldOrArchived() throws Exception {
+        Long soldId = publishAs(client, PRODUCT_NOM);
+        Long archiveId = publishAs(otherClient, "A archiver par admin");
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", soldId)
+                        .header("Authorization", adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("VENDU"));
+
+        mockMvc.perform(patch("/api/products/{id}/archiver", archiveId)
+                        .header("Authorization", adminBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("ARCHIVE"));
+    }
+
+    @Test
+    void pendingProductCannotBeMarkedSold_returns400() throws Exception {
+        Long id = submitAs(client, PRODUCT_NOM);
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", id)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error")
+                        .value("Le produit doit d'abord être validé et publié avant d'être marqué comme vendu"));
+    }
+
+    @Test
+    void soldOrArchived_hiddenFromPublicCatalog_and404ForAnonymousDetail() throws Exception {
+        Long soldId = publishAs(client, PRODUCT_NOM);
+        Long archivedId = publishAs(otherClient, "Annonce archivee unique");
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", soldId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/products/{id}/archiver", archivedId)
+                        .header("Authorization", bearer(otherClient)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].nom", not(hasItem(PRODUCT_NOM))))
+                .andExpect(jsonPath("$.content[*].nom", not(hasItem("Annonce archivee unique"))));
+
+        mockMvc.perform(get("/api/products/{id}", soldId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/products/{id}", archivedId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listMine_includesSoldAndArchived() throws Exception {
+        Long soldId = publishAs(client, PRODUCT_NOM);
+        Long archivedId = publishAs(client, "Seconde annonce archivee");
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", soldId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/products/{id}/archiver", archivedId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products/me")
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[*].statut", hasItem("VENDU")))
+                .andExpect(jsonPath("$.content[*].statut", hasItem("ARCHIVE")));
+    }
+
+    @Test
+    void reactivateSoldAndArchived_returnsToPublicCatalog() throws Exception {
+        Long soldId = publishAs(client, PRODUCT_NOM);
+        Long archivedId = publishAs(client, "Annonce a reactiver");
+
+        mockMvc.perform(patch("/api/products/{id}/vendu", soldId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/products/{id}/archiver", archivedId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/products/{id}/reactiver", soldId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("PUBLIE"));
+        mockMvc.perform(patch("/api/products/{id}/reactiver", archivedId)
+                        .header("Authorization", bearer(client)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statut").value("PUBLIE"));
+
+        mockMvc.perform(get("/api/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].nom", hasItem(PRODUCT_NOM)))
+                .andExpect(jsonPath("$.content[*].nom", hasItem("Annonce a reactiver")));
+    }
+
+    @Test
     void listMine_returnsOnlyCurrentUserProducts() throws Exception {
         submitAs(client, PRODUCT_NOM);
         submitAs(otherClient, "Produit de l autre");
@@ -286,6 +402,14 @@ class ProductSubmissionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[*].nom", hasItem(PRODUCT_NOM)))
                 .andExpect(jsonPath("$.content[*].nom", hasItem("Produit de l autre")));
+    }
+
+    private Long publishAs(User user, String nom) throws Exception {
+        Long id = submitAs(user, nom);
+        mockMvc.perform(patch("/api/admin/products/{id}/valider", id)
+                        .header("Authorization", adminBearer()))
+                .andExpect(status().isOk());
+        return id;
     }
 
     private Long submitAs(User user, String nom) throws Exception {
