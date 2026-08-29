@@ -7,11 +7,13 @@ import com.ndbshopping.backend.dto.product.ProductAttributeInput;
 import com.ndbshopping.backend.dto.product.ProductImageResponse;
 import com.ndbshopping.backend.dto.product.ProductRequest;
 import com.ndbshopping.backend.dto.product.ProductResponse;
+import com.ndbshopping.backend.dto.product.ProductVideoResponse;
 import com.ndbshopping.backend.entity.Category;
 import com.ndbshopping.backend.entity.CategoryAttributeDefinition;
 import com.ndbshopping.backend.entity.Product;
 import com.ndbshopping.backend.entity.ProductAttributeValue;
 import com.ndbshopping.backend.entity.ProductImage;
+import com.ndbshopping.backend.entity.ProductVideo;
 import com.ndbshopping.backend.entity.User;
 import com.ndbshopping.backend.entity.enums.NotificationType;
 import com.ndbshopping.backend.entity.enums.ProductSource;
@@ -23,6 +25,7 @@ import com.ndbshopping.backend.repository.CategoryAttributeDefinitionRepository;
 import com.ndbshopping.backend.repository.OrderItemRepository;
 import com.ndbshopping.backend.repository.ProductImageRepository;
 import com.ndbshopping.backend.repository.ProductRepository;
+import com.ndbshopping.backend.repository.ProductVideoRepository;
 import com.ndbshopping.backend.repository.ProductSpecifications;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -47,11 +50,13 @@ import java.util.Locale;
 public class ProductService {
 
     public static final int MAX_IMAGES_PAR_PRODUIT = 6;
+    public static final int MAX_VIDEOS_PAR_PRODUIT = 2;
 
     private final ProductRepository productRepository;
     private final CategoryService categoryService;
     private final CategoryAttributeDefinitionRepository attributeDefinitionRepository;
     private final ProductImageRepository productImageRepository;
+    private final ProductVideoRepository productVideoRepository;
     private final OrderItemRepository orderItemRepository;
     private final CartItemRepository cartItemRepository;
     private final FileStorageService fileStorageService;
@@ -62,6 +67,7 @@ public class ProductService {
             CategoryService categoryService,
             CategoryAttributeDefinitionRepository attributeDefinitionRepository,
             ProductImageRepository productImageRepository,
+            ProductVideoRepository productVideoRepository,
             OrderItemRepository orderItemRepository,
             CartItemRepository cartItemRepository,
             FileStorageService fileStorageService,
@@ -71,6 +77,7 @@ public class ProductService {
         this.categoryService = categoryService;
         this.attributeDefinitionRepository = attributeDefinitionRepository;
         this.productImageRepository = productImageRepository;
+        this.productVideoRepository = productVideoRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartItemRepository = cartItemRepository;
         this.fileStorageService = fileStorageService;
@@ -300,6 +307,7 @@ public class ProductService {
         }
         cartItemRepository.deleteByProductId(id);
         product.getImages().forEach(img -> fileStorageService.deleteIfExists(img.getRelativePath()));
+        product.getVideos().forEach(vid -> fileStorageService.deleteIfExists(vid.getRelativePath()));
         productRepository.delete(product);
     }
 
@@ -364,8 +372,47 @@ public class ProductService {
             throw ApiException.forbidden("Vous ne pouvez modifier les images que de vos propres produits");
         }
         if (product.getStatut() != ProductStatus.EN_ATTENTE) {
-            throw ApiException.forbidden("Impossible de modifier les images après validation ou rejet");
+            throw ApiException.forbidden("Impossible de modifier les médias après validation ou rejet");
         }
+    }
+
+    @Transactional
+    public ProductVideoResponse addVideo(Long productId, MultipartFile file, User user) {
+        Product product = get(productId);
+        assertCanEditImages(user, product);
+        if (product.getVideos().size() >= MAX_VIDEOS_PAR_PRODUIT) {
+            throw ApiException.conflict(
+                    "Limite de 2 vidéos atteinte. Supprimez-en une pour en ajouter une autre.");
+        }
+        int nextOrdre = product.getVideos().stream()
+                .mapToInt(ProductVideo::getOrdre)
+                .max()
+                .orElse(-1) + 1;
+        String relativePath = fileStorageService.storeProductVideo(product.getId(), file);
+        ProductVideo video = productVideoRepository.save(ProductVideo.builder()
+                .product(product)
+                .relativePath(relativePath)
+                .ordre(nextOrdre)
+                .build());
+        product.getVideos().add(video);
+        return new ProductVideoResponse(
+                video.getId(),
+                "/media/" + relativePath,
+                relativePath,
+                video.getOrdre());
+    }
+
+    @Transactional
+    public void deleteVideo(Long productId, Long videoId, User user) {
+        Product product = get(productId);
+        assertCanEditImages(user, product);
+        ProductVideo video = product.getVideos().stream()
+                .filter(vid -> vid.getId().equals(videoId))
+                .findFirst()
+                .orElseThrow(() -> ApiException.notFound("Vidéo introuvable"));
+        fileStorageService.deleteIfExists(video.getRelativePath());
+        product.getVideos().remove(video);
+        productVideoRepository.delete(video);
     }
 
     /**
@@ -480,6 +527,7 @@ public class ProductService {
     private void touchAssociations(Product product) {
         product.getCategory().getNom();
         product.getImages().size();
+        product.getVideos().size();
         product.getAttributes().forEach(a -> a.getAttributeDefinition().getNomAttribut());
         if (product.getSoumisPar() != null) {
             product.getSoumisPar().getId();

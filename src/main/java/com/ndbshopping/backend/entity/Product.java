@@ -95,6 +95,11 @@ public class Product {
     private List<ProductImage> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("ordre ASC, id ASC")
+    @Builder.Default
+    private List<ProductVideo> videos = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ProductAttributeValue> attributes = new ArrayList<>();
 

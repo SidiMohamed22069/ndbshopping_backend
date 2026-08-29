@@ -19,6 +19,7 @@ import java.util.UUID;
 public class FileStorageService {
 
     public static final long MAX_BYTES = 5L * 1024 * 1024;
+    public static final long MAX_VIDEO_BYTES = 20L * 1024 * 1024;
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/jpeg", "image/jpg", "image/png", "image/webp"
@@ -44,6 +45,57 @@ public class FileStorageService {
 
     public String storeProductImage(Long productId, MultipartFile file) {
         return storeImage("products", productId, file);
+    }
+
+    /**
+     * Stocke une vidéo produit. Le type réel est déterminé par les octets magiques
+     * (ftyp → mp4, EBML → webm), pas par l'extension déclarée.
+     */
+    public String storeProductVideo(Long productId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw ApiException.badRequest("Fichier vidéo manquant");
+        }
+        if (file.getSize() > MAX_VIDEO_BYTES) {
+            throw ApiException.badRequest("Fichier trop volumineux (max 20 Mo)");
+        }
+        try {
+            byte[] header = file.getInputStream().readNBytes(16);
+            String ext = detectVideoExtension(header);
+            if (ext == null) {
+                throw ApiException.badRequest("Format de vidéo non autorisé (mp4, webm uniquement)");
+            }
+            String filename = UUID.randomUUID() + ext;
+            Path dir = root.resolve("products").resolve(String.valueOf(productId)).resolve("videos");
+            Files.createDirectories(dir);
+            Path target = dir.resolve(filename);
+            file.transferTo(target);
+            return "products/" + productId + "/videos/" + filename;
+        } catch (ApiException ex) {
+            throw ex;
+        } catch (IOException e) {
+            log.error("Échec de sauvegarde de la vidéo produit {}", productId, e);
+            throw ApiException.serviceUnavailable("Impossible d'enregistrer la vidéo");
+        }
+    }
+
+    /**
+     * @return ".mp4", ".webm" ou null si le contenu n'est pas reconnu
+     */
+    static String detectVideoExtension(byte[] header) {
+        if (header == null || header.length < 4) {
+            return null;
+        }
+        if (header.length >= 8
+                && header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p') {
+            return ".mp4";
+        }
+        if ((header[0] & 0xFF) == 0x1A
+                && (header[1] & 0xFF) == 0x45
+                && (header[2] & 0xFF) == 0xDF
+                && (header[3] & 0xFF) == 0xA3) {
+            return ".webm";
+        }
+        return null;
     }
 
     public String storeCategoryImage(Long categoryId, MultipartFile file) {

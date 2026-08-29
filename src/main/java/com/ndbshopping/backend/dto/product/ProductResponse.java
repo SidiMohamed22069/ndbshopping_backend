@@ -3,6 +3,7 @@ package com.ndbshopping.backend.dto.product;
 import com.ndbshopping.backend.entity.Product;
 import com.ndbshopping.backend.entity.ProductAttributeValue;
 import com.ndbshopping.backend.entity.ProductImage;
+import com.ndbshopping.backend.entity.ProductVideo;
 import com.ndbshopping.backend.entity.enums.ProductSource;
 import com.ndbshopping.backend.entity.enums.ProductStatus;
 
@@ -27,13 +28,24 @@ public record ProductResponse(
         Instant createdAt,
         Instant updatedAt,
         List<ProductImageResponse> images,
+        List<ProductVideoResponse> videos,
+        boolean aVideo,
         List<ProductAttributeResponse> attributs
 ) {
     public static ProductResponse from(Product product) {
         List<ProductImageResponse> images = product.getImages() == null ? List.of()
                 : product.getImages().stream()
                 .sorted(Comparator.comparingInt(ProductImage::getOrdre).thenComparing(ProductImage::getId))
-                .map(img -> new ProductImageResponse(img.getId(), toMediaUrl(img), img.getOrdre()))
+                .map(img -> new ProductImageResponse(img.getId(), toMediaUrl(img.getRelativePath()), img.getOrdre()))
+                .toList();
+        List<ProductVideoResponse> videos = product.getVideos() == null ? List.of()
+                : product.getVideos().stream()
+                .sorted(Comparator.comparingInt(ProductVideo::getOrdre).thenComparing(ProductVideo::getId))
+                .map(vid -> new ProductVideoResponse(
+                        vid.getId(),
+                        toMediaUrl(vid.getRelativePath()),
+                        vid.getRelativePath(),
+                        vid.getOrdre()))
                 .toList();
         List<ProductAttributeResponse> attributs = product.getAttributes() == null ? List.of()
                 : product.getAttributes().stream()
@@ -55,6 +67,8 @@ public record ProductResponse(
                 product.getCreatedAt(),
                 product.getUpdatedAt(),
                 images,
+                videos,
+                !videos.isEmpty(),
                 attributs
         );
     }
@@ -68,8 +82,8 @@ public record ProductResponse(
         );
     }
 
-    private static String toMediaUrl(ProductImage image) {
-        String path = image.getRelativePath().replace("\\", "/");
+    private static String toMediaUrl(String relativePath) {
+        String path = relativePath.replace("\\", "/");
         return path.startsWith("/") ? "/media" + path : "/media/" + path;
     }
 }
