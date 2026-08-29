@@ -12,6 +12,7 @@ public record CategoryResponse(
         CategoryType type,
         Long parentId,
         String imageUrl,
+        int ordreAffichage,
         List<CategoryResponse> children
 ) {
     public static CategoryResponse from(Category category, List<CategoryResponse> children) {
@@ -21,6 +22,7 @@ public record CategoryResponse(
                 category.getType(),
                 category.getParent() == null ? null : category.getParent().getId(),
                 FileStorageService.toPublicUrl(category.getImageUrl()),
+                category.getOrdreAffichage(),
                 children
         );
     }

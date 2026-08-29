@@ -19,6 +19,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,17 @@ public class Category {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    /**
+     * Position d'affichage (0 = premier). Les lignes existantes restent à 0 :
+     * le tri secondaire par nom conserve l'ordre alphabétique actuel jusqu'à
+     * un réordonnancement admin. Les nouvelles catégories reçoivent max+1
+     * (fin de liste) à la création.
+     */
+    @Column(name = "ordre_affichage", nullable = false)
+    @ColumnDefault("0")
+    @Builder.Default
+    private int ordreAffichage = 0;
 
     @OneToMany(mappedBy = "parent")
     @Builder.Default

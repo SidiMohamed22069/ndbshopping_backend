@@ -15,8 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,17 +50,23 @@ public class CategoryService {
                 .collect(Collectors.groupingBy(c -> c.getParent().getId()));
         return all.stream()
                 .filter(c -> c.getParent() == null)
-                .sorted(Comparator.comparing(Category::getNom, String.CASE_INSENSITIVE_ORDER))
+                .sorted(affichageOrder())
                 .map(c -> toTree(c, byParent))
                 .toList();
     }
 
     private CategoryResponse toTree(Category category, Map<Long, List<Category>> byParent) {
         List<CategoryResponse> children = byParent.getOrDefault(category.getId(), List.of()).stream()
-                .sorted(Comparator.comparing(Category::getNom, String.CASE_INSENSITIVE_ORDER))
+                .sorted(affichageOrder())
                 .map(child -> toTree(child, byParent))
                 .toList();
         return CategoryResponse.from(category, children);
+    }
+
+    private static Comparator<Category> affichageOrder() {
+        return Comparator.comparingInt(Category::getOrdreAffichage)
+                .thenComparing(Category::getNom, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(Category::getId);
     }
 
     @Transactional
@@ -68,8 +77,26 @@ public class CategoryService {
                 .type(request.type())
                 .parent(parent)
                 .imageUrl(request.imageUrl())
+                .ordreAffichage(categoryRepository.findMaxOrdreAffichage() + 1)
                 .build());
         return CategoryResponse.leaf(saved);
+    }
+
+    @Transactional
+    public void reorder(List<Long> ordreIds) {
+        Set<Long> unique = new HashSet<>(ordreIds);
+        if (unique.size() != ordreIds.size()) {
+            throw ApiException.badRequest("La liste contient des identifiants en double");
+        }
+        List<Category> found = categoryRepository.findAllById(ordreIds);
+        if (found.size() != ordreIds.size()) {
+            throw ApiException.badRequest("Une ou plusieurs catégories sont introuvables");
+        }
+        Map<Long, Category> byId = found.stream()
+                .collect(Collectors.toMap(Category::getId, Function.identity()));
+        for (int i = 0; i < ordreIds.size(); i++) {
+            byId.get(ordreIds.get(i)).setOrdreAffichage(i);
+        }
     }
 
     @Transactional

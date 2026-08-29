@@ -18,5 +18,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     @Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.parent")
     List<Category> findAllWithParent();
 
+    @Query("SELECT COALESCE(MAX(c.ordreAffichage), -1) FROM Category c")
+    int findMaxOrdreAffichage();
+
     boolean existsByParentId(Long parentId);
 }
